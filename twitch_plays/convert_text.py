@@ -168,6 +168,18 @@ def writeDsm(textToDisplay, dsmFileName):
       touch = 1 if coord["touch"] else 0
       dsmFile.write("|0|.............%03d %03d %d|\n" % (dsm_x, dsm_y, touch))
       
+   #Some empty frames
+   for i in xrange(15):
+      dsmFile.write("|0|.............%03d %03d %d|\n" % (0, 0, 0))
+      
+   #Manipulate a 7
+   dsmFile.write("|0|.............%03d %03d %d|\n" % (77, 185, 1))
+   dsmFile.write("|0|.............%03d %03d %d|\n" % (78, 185, 1))
+   
+   #Some more empty frames
+   for i in xrange(20):
+      dsmFile.write("|0|.............%03d %03d %d|\n" % (0, 0, 0))
+      
    dsmFile.close()
    
 def testDsmWrite():
