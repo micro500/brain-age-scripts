@@ -9,11 +9,16 @@ from Queue import Queue
 import datetime
 import urllib2, json
 
-from convert_text import writeDsm
+from convert_text import writeDsm, writeLuaTest
 from async_input import rawInputWithTimeout
 
+TargetAnswer = 5
+
 SubmissionDsmFile = "submission.dsm"
+SubmissionLuaFile = "submission.lua"
 SubmissionLogFile = "submissionLog.txt"
+
+DesmumeCheckLogFile = "desmumeCheckLog.txt"
 
 class SubmissionManager(Thread):
     """
@@ -22,7 +27,9 @@ class SubmissionManager(Thread):
         super(SubmissionManager, self).__init__()
         
         self.submissionQueue = submissionQueue        
-        self.reviewTime = 30.0   #Allowable review time in seconds
+        self.totalReviewTime = 300.0   #Allowable review time in seconds
+        self.humanReviewTime = self.totalReviewTime   #Allowable review time in seconds
+        self.defaultHumanResponse = False  #Human review result on timeout - should be False but True is useful for testing
         
     def run(self):
         done = False
@@ -47,7 +54,7 @@ class SubmissionManager(Thread):
             os.utime(SubmissionLogFile, None)
         
         submissionTime = time.time()
-        writeDsm(self.displayText, "submission.dsm")
+        writeDsm(self.displayText, "submission.dsm", answer=TargetAnswer)
         self.launchDesmumeTest()
         
         #Human review - if rejected then move on to next submission
@@ -62,14 +69,26 @@ class SubmissionManager(Thread):
             with open(SubmissionLogFile) as submissionLog:
                 result = submissionLog.readline()
             if 'FAIL' in result:
+                self.logDesmumeCheckResult("FAIL")
                 return False
             if 'PASS' in result:
+                self.logDesmumeCheckResult("PASS")
                 self.publishSubmission()
                 return False
             #Timeout check
-            if time.time() - submissionTime > self.reviewTime:
+            if time.time() - submissionTime > self.totalReviewTime:
+                self.logDesmumeCheckResult("TIMEOUT")
                 return False
             time.sleep(1.0)
+            
+    def logDesmumeCheckResult(self, result):
+        with open(DesmumeCheckLogFile, "a"):
+            os.utime(DesmumeCheckLogFile, None)
+        now = datetime.datetime.now()
+        with open(DesmumeCheckLogFile, "a") as desmumeLogFile:
+            desmumeLogFile.write("%s:%s - %s\n\n" % (now.hour, now.minute, result))
+            desmumeLogFile.write(self.displayText)
+            desmumeLogFile.write("\n")
         
     def humanReview(self):
         """Human review of the text. Uses a raw_input in a separate thread that runs asynchronously.
@@ -77,33 +96,28 @@ class SubmissionManager(Thread):
         print "\nPlease review:\n"
         print self.displayText
         print "\n"
-        result = rawInputWithTimeout("Acceptable? (y/n) >>> ", self.reviewTime)
+        result = rawInputWithTimeout("Acceptable? (y/n) >>> ", self.humanReviewTime)
         if result == 'exit':
             return 'exit'
         if result is None:
             print "<Timeout>"
-            return False
+            return self.defaultHumanResponse
         return 'y' in result.lower()
                 
     def launchDesmumeTest(self):
         """Need a test that runs the input and makes sure it works.
            On getting the result the lua writes to the log file and the tail check reads the result.
+           Note that this script does not take care of setting up Desmume!
+           To make this work desmume needs to be opened with savestate number 4 set at the point where
+           the text will be drawn. The lua file needs to be loaded. Then each time this script rewrites
+           it, it will run again.
         """
-        def fakeDesmumeTest():
-            time.sleep(1)
-            with open(SubmissionLogFile, "a") as submissionLog:
-                submissionLog.write("PASS\n")
-                
-        #Eventual plan is that this gets run by simply overwriting a lua file.
-        #Desmume would stay open and not be managed by this script other than through that lua.
-        #For our fake version here we will not worry about it after starting it
-        self.desmumeThread = Thread(target=fakeDesmumeTest)
-        self.desmumeThread.start()
+        writeLuaTest(self.displayText, SubmissionLuaFile, logFileName=SubmissionLogFile, answer=TargetAnswer)
         
     def publishSubmission(self):
         now = datetime.datetime.now()
         print "Publishing at %s:%s" % (now.hour, now.minute)
-        publishFileName = "%s-%s-%s.dsm" % (now.hour, now.minute, now.second)
+        publishFileName = "./publish/%s-%s-%s-answer%s.dsm" % (now.hour, now.minute, now.second, TargetAnswer)
         os.rename(SubmissionDsmFile, publishFileName)
                 
         
@@ -112,14 +126,16 @@ def testSubmissionManager():
     """
     submissionQueue = Queue()
     submissionManager = SubmissionManager(submissionQueue)
+    submissionManager.humanReviewTime = 8.0
+    self.defaultHumanResponse = True
     submissionManager.start()
     
     lineList = []
-    maxLines = 5
+    maxLines = 6
     while True:
         try:
             verseJson = json.loads(urllib2.urlopen("http://labs.bible.org/api/?passage=random&type=json").readline())
-            verseText = verseJson[0]['text'].encode('ascii', 'ignore')
+            verseText = verseJson[0]['text'].encode('ascii', 'ignore').rstrip("\n")
             lineList.append(verseText)
             if len(lineList) > maxLines:
                 lineList.pop(0)

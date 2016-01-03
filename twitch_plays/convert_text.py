@@ -332,9 +332,9 @@ def testDsmWrite():
    writeDsm(microText, "test.dsm")
    
 def testLuaWrite():
-   writeLuaTest(microText, "test.lua")
+   #writeLuaTest(microText, "test.lua", answer=5)
    #writeLuaTest(tiggerText, "test.lua")
-   #writeLuaTest("abcd", "test.lua")
+   writeLuaTest("abcd", "test.lua", answer=5)
 
 
 if __name__ == "__main__":
