@@ -12,7 +12,7 @@ import urllib2, json
 from convert_text import writeDsm, writeLuaTest
 from async_input import rawInputWithTimeout
 
-TargetAnswer = 5
+TargetAnswer = 7
 
 SubmissionDsmFile = "submission.dsm"
 SubmissionLuaFile = "submission.lua"
@@ -88,7 +88,7 @@ class SubmissionManager(Thread):
         with open(DesmumeCheckLogFile, "a") as desmumeLogFile:
             desmumeLogFile.write("%s:%s - %s\n\n" % (now.hour, now.minute, result))
             desmumeLogFile.write(self.displayText)
-            desmumeLogFile.write("\n")
+            desmumeLogFile.write("\n\n")
         
     def humanReview(self):
         """Human review of the text. Uses a raw_input in a separate thread that runs asynchronously.
@@ -127,7 +127,7 @@ def testSubmissionManager():
     submissionQueue = Queue()
     submissionManager = SubmissionManager(submissionQueue)
     submissionManager.humanReviewTime = 8.0
-    self.defaultHumanResponse = True
+    submissionManager.defaultHumanResponse = True
     submissionManager.start()
     
     lineList = []
