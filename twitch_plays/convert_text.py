@@ -2,7 +2,27 @@ import re
 import os
 import os.path
 
+#Empty frames before manipulation - does not seem to help
 FramesBeforeManipulationInput = 0 
+#Number of frames to buffer before manipulation
+ManipulationBufferFrames = 10
+#Number of times to repeat buffer and manipulation
+ManipulationRepeat = 4
+#Put these in between "pen lifts"
+ManipulationBuffer = [(246, 10), (246, 11)]
+#This one for 7
+Manipulate7 = [
+   (77, 185),
+   (78, 185),
+]
+#This one for 5
+Manipulate5 = [
+   (77, 182),
+   (66, 166),
+   (52, 165),
+   (51, 152),
+   (82, 156),
+]
 
 def parseFontData():
    """
@@ -136,55 +156,53 @@ def convertTextToCoords(textToDisplay):
       
    return input_queue
 
-def testConverter():
-# loop through a string, find the char, look it up, add the input
-   textToDisplay = """micro500: any new images?
-samurai_goroh_: oh
-samurai_goroh_: Mmm, I just did one about Kid from Bastion
-samurai_goroh_: I won't be making many more, I'll be on vacations after Christmas
-micro500: ahh crap
-micro500: we still need like 36 more
-micro500: and so far most of them have been done by you :P"""
-
-   for coord in convertTextToCoords(textToDisplay):
-      if (coord["touch"]):
-         print str(coord["x"]) + "," + str(coord["y"])
-      else:
-         print ""
-      
-def writeDsm(textToDisplay, dsmFileName):
+def writeDsm(textToDisplay, dsmFileName, answer=7):
    """
    Write lines of dsm input that will draw the text.
    |0|.............216 086 1|
    -The 1 means touch and the coords say where
-   |0|.............000 000 0|
+   |0|.............234 192 0|
    -No touch, empty input
    """
    coords = convertTextToCoords(textToDisplay)
    if os.path.isfile(dsmFileName):
       os.remove(dsmFileName)
    dsmFile = open(dsmFileName, "w")
+   dsmLine = "|0|.............%03d %03d %d|\n"
+   
+   #dsm lines for the buffer input
+   bufferDsm = "".join([dsmLine % (c + (1,)) for c in ManipulationBuffer])
+   
+   #Initial buffer makes it work
+   dsmFile.write(bufferDsm)
+   
    for coord in coords:
-      dsm_x = 247 - coord["y"]
-      dsm_y = 6 + coord["x"]
-      touch = 1 if coord["touch"] else 0
-      dsmFile.write("|0|.............%03d %03d %d|\n" % (dsm_x, dsm_y, touch))
+      if coord["touch"]:
+         dsm_x = 247 - coord["y"]
+         dsm_y = 6 + coord["x"]
+         dsmFile.write(dsmLine % (dsm_x, dsm_y, 1))
+      else:
+         dsmFile.write(bufferDsm)
+         
+   #Some empty frames - the lua loop runs one more time than the python xrange loop
+   for i in xrange(FramesBeforeManipulationInput+1):
+      dsmFile.write(dsmLine % (234, 192, 0))
       
-   #Some empty frames
-   for i in xrange(FramesBeforeManipulationInput):
-      dsmFile.write("|0|.............%03d %03d %d|\n" % (0, 0, 0))
-      
-   #Manipulate a 7
-   dsmFile.write("|0|.............%03d %03d %d|\n" % (77, 185, 1))
-   dsmFile.write("|0|.............%03d %03d %d|\n" % (78, 185, 1))
+   #Manipulation
+   numberManipulation = Manipulate5 if answer == 5 else Manipulate7
+   for i in xrange(ManipulationRepeat):
+      for j in xrange(ManipulationBufferFrames):
+         dsmFile.write(bufferDsm)
+      for c in numberManipulation:
+         dsmFile.write(dsmLine % (c + (1,)))
    
    #Some more empty frames
    for i in xrange(20):
-      dsmFile.write("|0|.............%03d %03d %d|\n" % (0, 0, 0))
+      dsmFile.write("|0|.............%03d %03d %d|\n" % (234, 192, 0))
       
    dsmFile.close()
    
-def writeLuaTest(textToDisplay, luaFileName):
+def writeLuaTest(textToDisplay, luaFileName, logFileName="log.txt", answer=7):
    coords = convertTextToCoords(textToDisplay)
    if os.path.isfile(luaFileName):
       os.remove(luaFileName)
@@ -210,60 +228,43 @@ touchInput.touch = true;
 savestate.load(4);
 """)
    
-   #Try to avoid early parse
-   manipLua = ""
-   for coord in [(246, 10), (246, 11)]:
-      manipLua += """
-touchInput.x = %d;
-touchInput.y = %d;
-touchInput.touch = true;
-stylus.set(touchInput);
-emu.frameadvance();
-""" % coord
-   luaFile.write(manipLua)
-      
-   #The actual input
-   for coord in coords:
-      if not coord["touch"]:
-         luaFile.write(manipLua)
-         continue
-      dsm_x = 247 - coord["y"]
-      dsm_y = 6 + coord["x"]
-      touch = "true" if coord["touch"] else "false"
-      luaFile.write("""
+   luaInputFrame = """
 touchInput.x = %d;
 touchInput.y = %d;
 touchInput.touch = %s;
 stylus.set(touchInput);
 emu.frameadvance();
-""" % (dsm_x, dsm_y, touch))
+"""
+   
+   #Assemble the lua for buffer frames
+   bufferLua = ""
+   for coord in ManipulationBuffer:
+      bufferLua += luaInputFrame % (coord + ("true",))
+      
+   #This first buffer avoids early parse
+   luaFile.write(bufferLua)
+      
+   #The actual input
+   for coord in coords:
+      if not coord["touch"]:
+         luaFile.write(bufferLua)
+         continue
+      dsm_x = 247 - coord["y"]
+      dsm_y = 6 + coord["x"]
+      touch = "true" if coord["touch"] else "false"
+      luaFile.write(luaInputFrame % (dsm_x, dsm_y, touch))
       
    #The manipulation input
-   #TODO: both of these were provided by xy2_ or micro500 but they do not seem to work!
-   #This one for 7
-   manipCoords = [
-      (77, 185),
-      (78, 185),
-   ]
-   #This one for 5
-   manipCoords = [
-      (77, 182),
-      (66, 166),
-      (52, 165),
-      (51, 152),
-      (82, 156),
-   ]
    endManip = ""
-   for coord in manipCoords:
-      endManip += """
-touchInput.x = %d;
-touchInput.y = %d;
-touchInput.touch = true;
-stylus.set(touchInput);
-emu.frameadvance();
-""" % coord
-   #Something else I tried
-   endManip = "\n".join([manipLua] * 5) + endManip
+   numberManipulation = Manipulate5 if answer == 5 else Manipulate7
+   for coord in numberManipulation:
+      endManip += luaInputFrame % (coord + ("true",))
+      
+   #This is the magic trick to get it to work.
+   #We have some buffer before the real manipulation
+   #And then repeat that multiple times
+   endManip = "\n".join([bufferLua] * ManipulationBufferFrames) + endManip
+   endManip = "\n".join([endManip] * ManipulationRepeat)
    
    #padding frames and manipulation
    luaFile.write("""
@@ -280,12 +281,14 @@ oldCorrect = memory.readbyte(0x020E98E4);
 for i=0,%d do
    stylus.set(noTouch);
    emu.frameadvance();
+   
+   newTotal = memory.readbyte(0x020E98E0);
+   if newTotal ~= oldTotal then break end;
 end;
 
-newTotal = memory.readbyte(0x020E98E0);
 newCorrect = memory.readbyte(0x020E98E4);
 
-logfile = io.open("log.txt", "a");
+logfile = io.open("%s", "a");
 if newCorrect == oldCorrect + 1 then
    print("Got the question correct!");
    logfile:write("PASS\\n");
@@ -300,33 +303,41 @@ end;
 io.close(logfile);
 
 emu.pause();
-""" % (120,))
+""" % (420, logFileName))
    luaFile.close()
    
-def testDsmWrite():
-   textToDisplay = """micro500: any new images?
+tiggerText = """Do Tiggers like honey?
+Tiggers don't like honey!
+that sticky stuff is only fit
+for heffalumps and woozles
+You mean elephants and weasels?
+That's what I said, heffalumps and woozles"""
+microText = """micro500: any new images?
 samurai_goroh_: oh
 samurai_goroh_: Mmm, I just did one about Kid from Bastion
 samurai_goroh_: I won't be making many more, I'll be on vacations after Christmas
 micro500: ahh crap
 micro500: we still need like 36 more
 micro500: and so far most of them have been done by you :P"""
-   writeDsm(textToDisplay, "test.dsm")
+
+def testConverter():
+   """loop through a string, find the char, look it up, add the input"""
+   for coord in convertTextToCoords(microText):
+      if (coord["touch"]):
+         print str(coord["x"]) + "," + str(coord["y"])
+      else:
+         print ""
+   
+def testDsmWrite():
+   writeDsm(microText, "test.dsm")
    
 def testLuaWrite():
-   textToDisplay = """Do Tiggers like honey?
-Tiggers don't like honey!
-that sticky stuff is only fit
-for heffalumps and woozles
-You mean elephants and weasels?
-That's what I said, heffalumps and woo
-""".rstrip("\n")
-#That's what I said, heffalumps and woozles
-   writeLuaTest(textToDisplay, "test.lua")
+   writeLuaTest(microText, "test.lua")
+   #writeLuaTest(tiggerText, "test.lua")
    #writeLuaTest("abcd", "test.lua")
 
 
 if __name__ == "__main__":
    #testConverter()   
-   #testDsmWrite()
+   testDsmWrite()
    testLuaWrite()
