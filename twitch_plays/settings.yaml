@@ -1,0 +1,14 @@
+#For testing on #tasbot
+#IrcServer:      199.9.250.117:443
+#IrcServer:      irc.freenode.net
+#IrcNick:        TheAxeBot
+#IrcChannel:     "#tasbot"
+
+#Get the info on twitch chat here: http://api.twitch.tv/api/channels/gamesdonequick/chat_properties
+IrcServer:      192.16.64.213:443
+IrcNick:        theaxeman301
+#This first password belongs to TheAxeMan301
+IrcPassword:    "oauth:7ogu6w6actbjt8pab52r5oy11ygafx"
+#IrcPassword:    "oauth:30p2759m1s7wcxmfkq7wbeh76c80kj"
+#IrcPassword:    "oauth:w6s1fz0d9mpznfqhdjoirik3e7irvp"
+IrcChannel:     "#gamesdonequick"

@@ -12,6 +12,8 @@ import urllib2, json
 from convert_text import writeDsm, writeLuaTest
 from async_input import rawInputWithTimeout
 
+#The answer that the image gets - should be 7 or 5
+#Found that 7 is much more reliable
 TargetAnswer = 7
 
 SubmissionDsmFile = "submission.dsm"
@@ -117,7 +119,7 @@ class SubmissionManager(Thread):
     def publishSubmission(self):
         now = datetime.datetime.now()
         print "Publishing at %s:%s" % (now.hour, now.minute)
-        publishFileName = "./publish/%s-%s-%s-answer%s.dsm" % (now.hour, now.minute, now.second, TargetAnswer)
+        publishFileName = "./publish/chat-%s-%s-%s-answer%s.dsm" % (now.hour, now.minute, now.second, TargetAnswer)
         os.rename(SubmissionDsmFile, publishFileName)
                 
         

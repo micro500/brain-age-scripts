@@ -134,15 +134,16 @@ def convertTextToCoords(textToDisplay):
       
       # line wrap and indent if necessary
       if current_x + width >= MAX_WIDTH:
+         current_x = INDENT
+         line_count += 1  
+         # This enforces the line length limit
+         # If at the max do not increment y here, it will happen when we hit a newline
+         if line_count > MAX_LINES:
+            continue
          current_y += LINE_HEIGHT
          #If we are at the bottom of the screen we are done
          if current_y > MAX_HEIGHT-CHAR_HEIGHT:
             break
-         current_x = INDENT
-         line_count += 1  
-         # This enforces the line length limit
-         if line_count > MAX_LINES:
-            continue
          
       # Add the input for the character
       for coord in input:
@@ -332,9 +333,9 @@ def testDsmWrite():
    writeDsm(microText, "test.dsm")
    
 def testLuaWrite():
-   #writeLuaTest(microText, "test.lua", answer=5)
-   #writeLuaTest(tiggerText, "test.lua")
-   writeLuaTest("abcd", "test.lua", answer=5)
+   writeLuaTest(microText, "test.lua", answer=7)
+   #writeLuaTest(tiggerText, "test.lua", answer=7)
+   #writeLuaTest("abcd", "test.lua", answer=7)
 
 
 if __name__ == "__main__":
