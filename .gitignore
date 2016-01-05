@@ -1,0 +1,4 @@
+*.pyc
+*~
+twitch_plays/publish/*.dsm
+
