@@ -9,7 +9,7 @@ from keyboard import createKeyboardInput
 FirmwareDsmFileName = "brain_age_firmware.dsm"
 MainDsmFileName = "brain_age.dsm"
 
-def main():
+def compileFirmwareMovie():
    if len(sys.argv) < 2:
       sys.stderr.write('Usage: ' + sys.argv[0] + ' <string> \n\n')
       sys.exit(0)
@@ -40,6 +40,7 @@ def main():
    
    firmwareDsm.close()
    
+def compileCalcMovie():
    with open("../tas_projects/AGDQ2016/finished_images/file_list.txt") as f:
       dsmFileList = [fname.rstrip("\n") for fname in f.readlines()]
    
@@ -62,4 +63,4 @@ def main():
       
 
 if __name__ == "__main__":
-   main()
+   compileFirmwareMovie()
