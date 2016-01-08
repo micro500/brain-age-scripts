@@ -330,7 +330,7 @@ def testConverter():
          print ""
    
 def testDsmWrite():
-   writeDsm(microText, "test.dsm")
+   writeDsm("twitch plays brain age!\nWill the answer be correct?", "test.dsm")
    
 def testLuaWrite():
    writeLuaTest(microText, "test.lua", answer=7)

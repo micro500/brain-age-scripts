@@ -5,15 +5,25 @@ import sys
 from ds_stream import TasbotStreamerBase, FakeSerialInterface
 
 ImagesDir = "../tas_projects/AGDQ2016/finished_images/"
+ImagesReversePath = "../../../brain-age-scripts/"
 PublishDir = "./twitch_plays/publish/"
 
 EmptyDsmLine = "|0|.............000 000 0|\n"
+
+GodLineA = "|0|.............246 010 1|\n"
+GodLineB = "|0|.............246 011 1|\n"
+EraseButton = "|0|.............024 092 0|\n"
+
+TwitchPlaysBegin = "./twitch_plays/twitch_plays.dsm"
+TwitchPlaysWait = "./twitch_plays/twitch_plays_wait.dsm"
+TwitchPlaysTransition = "./twitch_plays/twitch_plays_transition.dsm"
+
       
 class DsStreamer(TasbotStreamerBase):
    """Like the normal streamer it goes through a series of files.
       However the list of files comes from the file_list.txt file or other specified file.
       If it lists "<twitch>" as one of its entries then it switches to twitch mode.
-      Empty input is returned until a new file is found in the twitch_plays/publish dir.
+      Buffer input is returned until a new file is found in the twitch_plays/publish dir.
       That dsm will be played and then it will switch back to the file list.
    """
    def __init__(self, serialInterface, fileListFile=None):
@@ -30,26 +40,27 @@ class DsStreamer(TasbotStreamerBase):
       self.lastTwitchImageSet = set()
          
    def getNextLine(self):
-      if self.waitingForTwitchImage:
-         self.checkTwitchImageDir()
-         return EmptyDsmLine
-      
       while (True):
          if self.inputFh is None:
+            if self.waitingForTwitchImage:
+               self.checkTwitchImageDir()
+      
             #At the end of the file list? Then we are done!
             if len(self.dsmFileList) == 0:
                sys.exit(0)
             nextFileName = self.dsmFileList.pop(0)
+            #print "open file " + nextFileName
+            #print "Current list: " + ", ".join(self.dsmFileList)
             
             #Begin twitch sequence
             if nextFileName == "<twitch>":
                self.handleTwitchBegin()
-               return EmptyDsmLine
+               nextFileName = os.path.join(ImagesReversePath, TwitchPlaysBegin)
             
             #Open the next file or skip on failure
             actualFileName = os.path.join(ImagesDir, nextFileName)
             if not os.path.isfile(actualFileName):
-               print "File not found: " + fileName
+               print "File not found: " + nextFileName
                continue
             
             self.inputFh = open(actualFileName)
@@ -73,11 +84,13 @@ class DsStreamer(TasbotStreamerBase):
       """Check the twitch image dir. If a new image was published then start streaming from it"""
       newImages = set(os.listdir(PublishDir)) - self.lastTwitchImageSet
       if len(newImages) == 0:
+         self.dsmFileList.insert(0, os.path.join(ImagesReversePath, TwitchPlaysWait))
          return
       
-      #Clear the waiting flag and open the file
+      #Clear waiting flag and then put transition and image file in list
       self.waitingForTwitchImage = False
-      self.inputFh = open(os.path.join(PublishDir, newImages.pop()))
+      twitchDsm = os.path.join(ImagesReversePath, PublishDir, newImages.pop())
+      self.dsmFileList = [os.path.join(ImagesReversePath, TwitchPlaysTransition), twitchDsm] + self.dsmFileList
    
    def getFilesInPublishDir(self):
       return set(os.listdir(PublishDir))

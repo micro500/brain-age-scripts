@@ -121,7 +121,7 @@ class BrainAgeIrcBot(irc.client.SimpleIRCClient):
             
         #If we have enough lines and the queue is empty then submit and restart our cache
         if len(self.lineCache) == MaxChatLines and self.submissionQueue.empty():
-            print "BrainAgeIrcBot submitted some chat lines: " + "".join(self.lineCache)
+            #print "BrainAgeIrcBot submitted some chat lines: " + "".join(self.lineCache)
             self.submissionQueue.put("\n".join(self.lineCache), block=False)
             lineList = []
             
