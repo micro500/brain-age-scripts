@@ -112,9 +112,13 @@ def convertTextToCoords(textToDisplay):
    # This is how many lines we have written from the current input line
    line_count = 1;
    
+   #This will be the text that actually gets printed
+   actualText = ""
+   
    for c in textToDisplay.upper():
       #Handle newline
       if c == "\n":
+         actualText += c
          current_y += LINE_HEIGHT
          #If we are at the bottom of the screen we are done
          if current_y > MAX_HEIGHT-CHAR_HEIGHT:
@@ -146,6 +150,7 @@ def convertTextToCoords(textToDisplay):
             break
          
       # Add the input for the character
+      actualText += c
       for coord in input:
          input_queue.append({"x": current_x + coord["x"], "y": current_y + coord["y"], "touch": coord["touch"]})
 
@@ -155,7 +160,7 @@ def convertTextToCoords(textToDisplay):
       # Advance the X position by the width of the character, plus 1 to leave room between
       current_x += width + 1
       
-   return input_queue
+   return input_queue, actualText
 
 def writeDsm(textToDisplay, dsmFileName, answer=7):
    """
@@ -165,7 +170,7 @@ def writeDsm(textToDisplay, dsmFileName, answer=7):
    |0|.............234 192 0|
    -No touch, empty input
    """
-   coords = convertTextToCoords(textToDisplay)
+   coords, actualText = convertTextToCoords(textToDisplay)
    if os.path.isfile(dsmFileName):
       os.remove(dsmFileName)
    dsmFile = open(dsmFileName, "w")
@@ -203,8 +208,10 @@ def writeDsm(textToDisplay, dsmFileName, answer=7):
       
    dsmFile.close()
    
+   return actualText
+   
 def writeLuaTest(textToDisplay, luaFileName, logFileName="log.txt", answer=7):
-   coords = convertTextToCoords(textToDisplay)
+   coords, actualText = convertTextToCoords(textToDisplay)
    if os.path.isfile(luaFileName):
       os.remove(luaFileName)
    luaFile = open(luaFileName, "w")
@@ -323,14 +330,17 @@ micro500: and so far most of them have been done by you :P"""
 
 def testConverter():
    """loop through a string, find the char, look it up, add the input"""
-   for coord in convertTextToCoords(microText):
+   coords, actualText = convertTextToCoords(microText)
+   for coord in coords:
       if (coord["touch"]):
          print str(coord["x"]) + "," + str(coord["y"])
       else:
          print ""
    
 def testDsmWrite():
-   writeDsm("twitch plays brain age!\nWill the answer be correct?", "test.dsm")
+   actualText = writeDsm(microText, "test.dsm")
+   #actualText = writeDsm("twitch plays brain age!\nWill the answer be correct?", "test.dsm")
+   print "actual text: \n" + actualText
    
 def testLuaWrite():
    writeLuaTest(microText, "test.lua", answer=7)

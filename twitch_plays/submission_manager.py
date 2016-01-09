@@ -56,7 +56,7 @@ class SubmissionManager(Thread):
             os.utime(SubmissionLogFile, None)
         
         submissionTime = time.time()
-        writeDsm(self.displayText, "submission.dsm", answer=TargetAnswer)
+        self.actualText = writeDsm(self.displayText, "submission.dsm", answer=TargetAnswer)
         self.launchDesmumeTest()
         
         #Human review - if rejected then move on to next submission
@@ -96,7 +96,7 @@ class SubmissionManager(Thread):
         """Human review of the text. Uses a raw_input in a separate thread that runs asynchronously.
         """
         print "\nPlease review:\n"
-        print self.displayText
+        print self.actualText
         print "\n"
         result = rawInputWithTimeout("Acceptable? (y/n) >>> ", self.humanReviewTime)
         if result == 'exit':
