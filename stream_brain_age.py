@@ -114,7 +114,7 @@ def main():
    else:
       list_file = os.path.join(ImagesDir, "file_list.txt")
    
-   streamer = DsStreamer(ser)
+   streamer = DsStreamer(ser,list_file)
    streamer.runStream()
 
    
