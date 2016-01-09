@@ -276,18 +276,18 @@ for i=0,%d do
    emu.frameadvance();
 end;
 """ % (FramesBeforeManipulationInput,) + endManip + """
-oldTotal = memory.readbyte(0x020E98E0);
-oldCorrect = memory.readbyte(0x020E98E4);
+oldTotal = memory.readbyte(0x020E9A40);
+oldCorrect = memory.readbyte(0x020E9A44);
 
 for i=0,%d do
    stylus.set(noTouch);
    emu.frameadvance();
    
-   newTotal = memory.readbyte(0x020E98E0);
+   newTotal = memory.readbyte(0x020E9A40);
    if newTotal ~= oldTotal then break end;
 end;
 
-newCorrect = memory.readbyte(0x020E98E4);
+newCorrect = memory.readbyte(0x020E9A44);
 
 logfile = io.open("%s", "a");
 if newCorrect == oldCorrect + 1 then
